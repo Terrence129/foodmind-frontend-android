@@ -1,6 +1,6 @@
 # FoodMind 产品需求文档（PRD）
 
-版本：1.0  
+版本：1.1  
 状态：MVP 基线  
 日期：2026-06-23
 
@@ -287,9 +287,9 @@ Home 是信息摘要和功能入口，不承担全部业务操作。
 
 Home 数据加载失败时，各模块应独立降级，避免整个页面完全不可用。
 
-## 8. 导航与信息架构
+## 8. 页面入口与信息架构
 
-底部导航包含五个一级入口：
+登录后的主功能区包含五个一级入口：
 
 ```text
 Home | Log | History | Groups | Profile
@@ -303,6 +303,8 @@ Home | Log | History | Groups | Profile
 - Group Detail/Feed：从 Groups 进入。
 
 登录、注册和首次 Profile Setup 不显示底部导航。
+
+Android 课程实现采用多 Activity 架构。五个一级入口分别由独立 Activity 承载；底部导航仅作为统一入口控件，点击后通过显式 Intent 打开目标 Activity。产品需求不依赖 Fragment、NavHost 或 Navigation Component。
 
 ## 9. 全局状态要求
 

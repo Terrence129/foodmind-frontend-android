@@ -1,6 +1,6 @@
 # FoodMind 项目文档
 
-版本：1.0  
+版本：1.1  
 文档日期：2026-06-23  
 目标客户端：Android（Kotlin + XML Layout）  
 后端：Spring Boot 3 + PostgreSQL
@@ -29,15 +29,19 @@
 
 ## 3. 已确定的技术决策
 
-- 单 Activity、多 Fragment。
-- 所有页面使用 XML Layout，不使用 Jetpack Compose。
-- 使用 Navigation Component 管理导航和返回栈。
-- 使用 MVVM：Fragment → ViewModel → Repository → Retrofit API。
+- 采用多 Activity 页面架构，一个主要页面对应一个 Activity。
+- 所有页面使用 XML Layout，不使用 Fragment、Jetpack Compose、NavHost 或 Navigation Component。
+- 页面跳转使用显式 Intent；页面参数使用 Intent Extra 传递。
+- 使用 `finish()`、`FLAG_ACTIVITY_CLEAR_TOP`、`FLAG_ACTIVITY_NEW_TASK` 和 `FLAG_ACTIVITY_CLEAR_TASK` 管理返回栈。
+- 底部导航仅作为页面入口控件，点击后通过显式 Intent 切换 Activity，不承载 Fragment。
+- 使用 MVVM：Activity → ViewModel → Repository → Retrofit API。
 - 使用 View Binding 访问视图。
 - 使用 Kotlin Coroutines 处理异步请求。
 - 使用 RecyclerView 展示列表。
 - JWT 保存于应用私有存储，并由 OkHttp Interceptor 自动附加。
 - Android 模拟器访问电脑后端时使用 `http://10.0.2.2:8080/`。
+
+上述约束属于课程设计的固定技术边界。后续实现不得引入 `nav_graph.xml`、`NavController`、`FragmentContainerView` 或 Safe Args。
 
 ## 4. 术语
 
