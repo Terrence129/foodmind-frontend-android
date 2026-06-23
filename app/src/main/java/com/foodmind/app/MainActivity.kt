@@ -1,4 +1,4 @@
-package com.foodmind
+package com.foodmind.app
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
