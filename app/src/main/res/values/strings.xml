@@ -1,3 +1,20 @@
 <resources>
     <string name="app_name">FoodMind</string>
+
+    <!-- Login -->
+    <string name="login_title">Welcome back</string>
+    <string name="login_description">Log in to continue using FoodMind.</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="login">Log in</string>
+    <string name="create_account">Create account</string>
+
+    <!-- Register -->
+    <string name="register_title">Create your account</string>
+    <string name="register_description">Create an account to start recording your meals.</string>
+    <string name="username">Username</string>
+    <string name="confirm_password">Confirm password</string>
+    <string name="register">Register</string>
+    <string name="back_to_login">Back to login</string>
+    <string name="home_title">Home</string>
 </resources>
