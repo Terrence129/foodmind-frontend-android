@@ -1,9 +1,9 @@
 # FoodMind 用户流程与页面规格
 
-版本：1.0  
+版本：1.1  
 日期：2026-06-23
 
-## 1. 导航总览
+## 1. 页面流转总览
 
 ```text
 App Launch
@@ -27,34 +27,52 @@ Main application
 
 ## 2. 页面清单
 
-| ID | 页面 | Fragment | 级别 |
+| ID | 页面 | Activity | 级别 |
 |---|---|---|---|
-| SCR-01 | Login | `LoginFragment` | Auth |
-| SCR-02 | Register | `RegisterFragment` | Auth |
-| SCR-03 | Profile Setup | `ProfileSetupFragment` | Auth/Onboarding |
-| SCR-04 | Home | `HomeFragment` | Bottom navigation |
-| SCR-05 | Log | `LogFragment` | Bottom navigation |
-| SCR-06 | Add Meal | `AddMealFragment` | Secondary |
-| SCR-07 | Add Drink | `AddDrinkFragment` | Secondary |
-| SCR-08 | History | `HistoryFragment` | Bottom navigation |
-| SCR-09 | Meal Detail | `MealDetailFragment` | Secondary |
-| SCR-10 | Drink Detail | `DrinkDetailFragment` | Secondary |
-| SCR-11 | Groups | `GroupsFragment` | Bottom navigation |
-| SCR-12 | Group Detail | `GroupDetailFragment` | Secondary |
-| SCR-13 | Group Feed | `GroupFeedFragment` | Secondary |
-| SCR-14 | Recommendation | `RecommendationFragment` | Secondary |
-| SCR-15 | Analytics | `AnalyticsFragment` | Secondary |
-| SCR-16 | Profile | `ProfileFragment` | Bottom navigation |
+| SCR-00 | App Launch Router | `MainActivity` | Router |
+| SCR-01 | Login | `LoginActivity` | Auth |
+| SCR-02 | Register | `RegisterActivity` | Auth |
+| SCR-03 | Profile Setup | `ProfileSetupActivity` | Auth/Onboarding |
+| SCR-04 | Home | `HomeActivity` | Primary |
+| SCR-05 | Log | `LogActivity` | Primary |
+| SCR-06 | Add Meal | `AddMealActivity` | Secondary |
+| SCR-07 | Add Drink | `AddDrinkActivity` | Secondary |
+| SCR-08 | History | `HistoryActivity` | Primary |
+| SCR-09 | Meal Detail | `MealDetailActivity` | Secondary |
+| SCR-10 | Drink Detail | `DrinkDetailActivity` | Secondary |
+| SCR-11 | Groups | `GroupsActivity` | Primary |
+| SCR-12 | Group Detail | `GroupDetailActivity` | Secondary |
+| SCR-13 | Group Feed | `GroupFeedActivity` | Secondary |
+| SCR-14 | Recommendation | `RecommendationActivity` | Secondary |
+| SCR-15 | Analytics | `AnalyticsActivity` | Secondary |
+| SCR-16 | Profile | `ProfileActivity` | Primary |
 
 ## 3. 全局导航规则
 
-- Auth 页面不显示 Toolbar 的返回按钮，Register 除外。
-- 登录成功后清空 Auth 返回栈，系统返回键不能回到 Login。
-- Profile Setup 完成后清空 Onboarding 返回栈。
-- Bottom Navigation 切换一级页面时保留各自状态。
-- Detail 页面使用 Toolbar 返回上一个页面。
-- Fragment 之间只传 ID、来源页面等轻量参数，不传完整 DTO。
-- 发生统一 401 时跳转 Login，并清空所有受保护页面返回栈。
+- 页面跳转统一使用显式 Intent，不使用 Fragment、NavHost、NavController、Navigation Component 或 Safe Args。
+- Auth 页面不显示 Toolbar 返回按钮，Register 除外；Register 返回 Login 时调用 `finish()`。
+- 登录、注册成功后使用 `FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_CLEAR_TASK` 清空认证页面，系统返回键不能回到 Login/Register。
+- Profile Setup 完成后同样清空引导页面并进入 Home。
+- 五个一级页面的底部导航仅负责触发 Intent；切换时使用 `FLAG_ACTIVITY_CLEAR_TOP | FLAG_ACTIVITY_SINGLE_TOP` 并结束当前一级 Activity，避免返回键穿过多个一级页面。
+- Detail 页面通过 Toolbar 或系统返回键调用 `finish()` 返回来源页面。
+- Activity 之间只通过 Intent Extra 传递 ID、模式、来源页面等轻量参数，不传完整 DTO 或大型 Serializable 对象。
+- Intent Extra 必须定义统一常量，目标 Activity 必须处理参数缺失或非法值。
+- 发生统一 401 时清除 Token，并以 `FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_CLEAR_TASK` 打开 Login。
+- 所有 Activity 必须防止重复点击造成重复请求或重复启动页面。
+
+### 3.1 Intent 参数约定
+
+| 场景 | Extra Key | Type | Required |
+|---|---|---|---:|
+| Meal Detail | `extra_meal_id` | Long | Yes |
+| Drink Detail | `extra_drink_id` | Long | Yes |
+| Group Detail/Feed | `extra_group_id` | Long | Yes |
+| 编辑 Meal | `extra_meal_id`、`extra_form_mode` | Long、String | Yes |
+| 编辑 Drink | `extra_drink_id`、`extra_form_mode` | Long、String | Yes |
+| Recommendation 预填 | `extra_meal_type` | String | No |
+| 来源页面 | `extra_source` | String | No |
+
+必填 ID 缺失或小于等于 0 时，页面显示简短错误并安全 `finish()`，不得继续请求无效资源。
 
 ## 4. SCR-01 Login
 
@@ -77,7 +95,7 @@ Main application
 | 操作 | 结果 |
 |---|---|
 | 点击 Login | 校验输入后调用登录接口 |
-| 点击 Create account | 导航至 Register |
+| 点击 Create account | 显式 Intent 打开 RegisterActivity |
 | 键盘 Done | 等价于点击 Login |
 
 ### API
@@ -98,8 +116,8 @@ Main application
 
 ### 成功导航
 
-- `profileCompleted=true` → Home。
-- `profileCompleted=false` → Profile Setup。
+- `profileCompleted=true` → 清空认证返回栈并打开 HomeActivity。
+- `profileCompleted=false` → 清空认证返回栈并打开 ProfileSetupActivity。
 
 ## 5. SCR-02 Register
 
@@ -125,7 +143,7 @@ Main application
 
 ### 成功导航
 
-保存 Token，清除 Register/Login 返回栈，进入 Profile Setup。
+保存 Token，使用 `FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_CLEAR_TASK` 清除 Register/Login 返回栈，并进入 ProfileSetupActivity。
 
 ## 6. SCR-03 Profile Setup
 
@@ -211,7 +229,7 @@ Validate local form
 - Add Drink 卡片。
 - 简短说明。
 
-### 导航
+### 页面跳转
 
 - Add Meal → SCR-06。
 - Add Drink → SCR-07。
@@ -311,7 +329,7 @@ API：
 
 显示完整 Meal 信息并提供编辑、删除操作。
 
-### 导航参数
+### Intent 参数
 
 - `mealId: Long`
 - `source: String?`
@@ -323,7 +341,7 @@ API：
 
 ### 操作
 
-- Edit → AddMealFragment 编辑模式。
+- Edit → 通过 Intent 打开 AddMealActivity 编辑模式，并传入 `extra_meal_id`。
 - Delete → 确认对话框 → 删除 → 返回并刷新来源列表。
 - 非所有者从 Group Feed 进入时隐藏 Edit/Delete。
 
@@ -370,7 +388,7 @@ API：
 
 ## 15. SCR-12 Group Detail
 
-### 导航参数
+### Intent 参数
 
 - `groupId: Long`
 
@@ -513,7 +531,7 @@ Selected
 
 - 显示确认。
 - 清除 Token、本地 User 和页面状态。
-- 导航 Login 并清空返回栈。
+- 使用 Intent 打开 LoginActivity，并通过 `FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_CLEAR_TASK` 清空返回栈。
 
 ## 20. 通用错误文案
 
@@ -529,13 +547,16 @@ Selected
 
 ## 21. 页面完成检查
 
-每个 Fragment 完成前检查：
+每个 Activity 完成前检查：
 
 - 有正常布局和小屏滚动处理。
 - 有 Loading、Content、Empty、Error。
 - 有输入验证。
 - 支持旋转后的 ViewModel 状态恢复。
 - 不重复观察 LiveData/StateFlow。
-- 页面销毁时清空 Binding。
-- 导航不会重复触发。
+- View Binding 在 `onCreate()` 中正确初始化，不持有其他 Activity 的 View。
+- Activity 已在 Manifest 注册，非启动页面默认 `exported=false`。
+- Intent 参数缺失或非法时可以安全退出。
+- 快速重复点击不会重复发起 Intent。
+- 认证成功、Logout 和 401 的返回栈符合规格。
 - API 错误不会导致崩溃。

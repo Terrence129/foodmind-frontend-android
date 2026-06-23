@@ -1,11 +1,11 @@
 # FoodMind 开发与测试计划
 
-版本：1.0  
+版本：1.1  
 日期：2026-06-23
 
 ## 1. 开发原则
 
-先完成一条可运行的纵向业务链路，再扩展其他功能。不要先创建几十个空 Fragment 和 DTO。
+先完成一条可运行的纵向业务链路，再扩展其他功能。不要先创建几十个空 Activity 和 DTO。
 
 推荐第一条链路：
 
@@ -18,7 +18,7 @@ Login
 → Edit/Delete Meal
 ```
 
-这条链路会验证 Navigation、Retrofit、JWT、Repository、ViewModel、RecyclerView、表单和错误处理。
+这条链路会验证 Activity、显式 Intent、Intent Extra、返回栈、Retrofit、JWT、Repository、ViewModel、RecyclerView、表单和错误处理。
 
 ## 2. 优先级
 
@@ -59,9 +59,13 @@ Login
 交付：
 
 - Gradle 依赖。
-- MainActivity。
-- NavHost。
-- Bottom Navigation。
+- MainActivity 启动路由。
+- LoginActivity、RegisterActivity。
+- ProfileSetupActivity 占位页面。
+- Activity + XML 页面骨架。
+- 显式 Intent 页面跳转。
+- Intent Extra 常量。
+- 一级页面入口控件。
 - View Binding。
 - Retrofit/OkHttp。
 - ApiResponse/NetworkResult。
@@ -70,18 +74,22 @@ Login
 验收：
 
 - App 可构建运行。
-- Login 空页面可导航到 Register。
+- 项目不依赖 Fragment、NavHost、Navigation Component 或导航图。
+- MainActivity 可根据本地 Token 进入 Login 或启动会话校验。
+- LoginActivity 可通过 Intent 打开 RegisterActivity。
+- RegisterActivity 调用 `finish()` 后可回到 LoginActivity。
+- 所有 Activity 已在 Manifest 注册。
 - Health API 可从开发环境调用。
 
 ### M2 Authentication 和 Profile
 
 交付：
 
-- Login/Register。
+- LoginActivity/RegisterActivity。
 - Token 保存。
-- `/auth/me` 恢复会话。
-- Profile Setup。
-- 统一 401。
+- MainActivity 调用 `/auth/me` 恢复会话。
+- ProfileSetupActivity。
+- 统一 401 和返回 LoginActivity。
 
 验收：
 
@@ -173,9 +181,11 @@ Login
 - 小屏是否可滚动。
 - 键盘是否遮住按钮。
 - 重复点击是否重复提交。
-- 返回键和返回栈。
+- Intent 是否重复启动页面。
+- Intent Extra 缺失或非法时是否安全处理。
+- Toolbar 返回、系统返回键和 Activity 返回栈是否一致。
 - Loading、Empty、Error。
-- 旋转后是否重复请求或重复导航。
+- 旋转后是否重复请求或重复启动 Activity。
 
 ## 5. 核心验收用例
 
@@ -187,8 +197,9 @@ Login
 
 - 返回 Token。
 - Token 被保存。
-- 进入 Profile Setup。
-- 返回键不回到 Register。
+- 使用显式 Intent 进入 ProfileSetupActivity。
+- 认证 Activity 返回栈被清空。
+- 返回键不回到 RegisterActivity 或 LoginActivity。
 
 ### TC-AUTH-02 Token 过期
 
@@ -198,7 +209,8 @@ Login
 
 - `/auth/me` 返回 401。
 - Token 清除。
-- 进入 Login。
+- 使用显式 Intent 进入 LoginActivity。
+- 所有受保护 Activity 被清空。
 - 只显示一次 Session expired。
 
 ### TC-PROFILE-01 Budget 非法
@@ -284,7 +296,11 @@ Login
 - 主要成功和失败路径已测试。
 - 无硬编码 Token、User ID、Group ID。
 - 用户可见文本在 `strings.xml`。
-- View Binding 正确释放。
+- Activity View Binding 正确初始化，且未泄漏到 ViewModel/Repository。
+- Activity 已在 Manifest 正确注册。
+- 内部 Activity 默认 `exported=false`。
+- Intent 使用统一 Extra Key，目标页面校验必填参数。
+- 不存在 Fragment、NavHost、NavController、Safe Args 或 `nav_graph.xml`。
 - 返回栈符合页面文档。
 - 相关文档和接口变更已同步。
 

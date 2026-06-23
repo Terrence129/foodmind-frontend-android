@@ -1,27 +1,32 @@
 # FoodMind Android 前端架构
 
-版本：1.0  
+版本：1.1  
 日期：2026-06-23  
-技术约束：Kotlin + XML Layout
+技术约束：Kotlin + XML Layout + Activity + Intent
 
 ## 1. 架构目标
 
-本架构服务于课程项目和 MVP，优先考虑：
+本架构服务于课程设计和 MVP，优先保证：
 
-- 开发者容易理解。
-- 页面职责清楚。
-- API 映射直接。
-- 可以逐功能完成和测试。
-- 不为了“看起来高级”引入不必要复杂度。
+- 技术方案符合课程要求，便于讲解和现场演示。
+- 每个页面职责清楚，文件与页面可以直接对应。
+- 页面跳转、参数传递和返回栈行为可预测。
+- UI、业务状态和网络访问保持分层。
+- 可以按功能逐步开发、编译和测试。
+- 不为了“看起来高级”引入课程范围外的复杂框架。
 
-采用：
+固定技术边界：
+
+- 使用多个 Activity 承载页面。
+- 使用 XML Layout 构建界面。
+- 使用显式 Intent 完成页面跳转。
+- 使用 Intent Extra 传递轻量参数。
+- 不使用 Fragment、NavHost、Navigation Component、NavController、Safe Args 或 Jetpack Compose。
+
+总体调用链：
 
 ```text
-Single Activity
-    ↓
-Navigation Component
-    ↓
-Fragments + XML Layout
+Activity + XML Layout
     ↓
 ViewModel + UiState
     ↓
@@ -37,155 +42,165 @@ Spring Boot backend
 | 范围 | 技术 |
 |---|---|
 | Language | Kotlin |
-| UI | XML Layout、Material Components |
-| Navigation | Jetpack Navigation Component |
+| UI | Activity、XML Layout、Material Components |
+| Page navigation | Explicit Intent |
+| Parameter passing | Intent Extra |
+| Back stack | `finish()`、Intent Flags |
 | Architecture | MVVM |
-| State | StateFlow（或课程要求下使用 LiveData） |
+| State | StateFlow；课程要求时可改用 LiveData |
 | Async | Kotlin Coroutines |
 | HTTP | Retrofit + OkHttp |
 | JSON | Gson 或 Moshi，项目内只选一种 |
 | Lists | RecyclerView + ListAdapter + DiffUtil |
 | View access | View Binding |
-| Local session | SharedPreferences；可选 EncryptedSharedPreferences |
+| Local session | SharedPreferences；加密存储为可选增强 |
 | Image | MVP 暂无上传；远程 URL 可使用 Coil/Glide |
 
-## 3. 模块职责
+## 3. 页面分类
 
-### 3.1 Activity
+### 3.1 启动路由 Activity
 
-`MainActivity` 只负责：
+`MainActivity` 是应用唯一 Launcher Activity，只负责决定首次打开哪个页面：
 
-- 承载 NavHostFragment。
-- 管理全局 Toolbar。
-- 管理 BottomNavigationView。
-- 根据当前 Destination 显示或隐藏全局导航。
-- 响应全局 SessionExpired 事件。
+```text
+App Launch
+→ No token
+    → LoginActivity
+→ Has token
+    → GET /api/auth/me
+        → 401 → clear token → LoginActivity
+        → profileCompleted=false → ProfileSetupActivity
+        → profileCompleted=true → HomeActivity
+```
+
+完成路由后，`MainActivity` 必须调用 `finish()`，不能停留在业务返回栈中。
+
+### 3.2 认证与引导 Activity
+
+包括：
+
+- `LoginActivity`
+- `RegisterActivity`
+- `ProfileSetupActivity`
+
+认证成功或引导完成后，需要清空认证页面返回栈，用户按系统返回键不能重新进入 Login 或 Register。
+
+### 3.3 一级业务 Activity
+
+包括：
+
+- `HomeActivity`
+- `LogActivity`
+- `HistoryActivity`
+- `GroupsActivity`
+- `ProfileActivity`
+
+每个一级页面可以显示相同的底部入口控件。控件只负责通过显式 Intent 打开目标 Activity，不承载 Fragment。
+
+课程版本优先保证返回栈简单、可演示：切换一级页面时打开目标 Activity，并结束当前一级 Activity。页面重新进入后由 ViewModel 恢复必要状态或重新加载数据。
+
+### 3.4 二级业务 Activity
+
+包括：
+
+- `AddMealActivity`
+- `AddDrinkActivity`
+- `MealDetailActivity`
+- `DrinkDetailActivity`
+- `GroupDetailActivity`
+- `GroupFeedActivity`
+- `RecommendationActivity`
+- `AnalyticsActivity`
+
+二级页面由来源页面启动，返回时调用 `finish()`。来源列表在 `onResume()` 中按需刷新。
+
+## 4. 分层职责
+
+### 4.1 Activity
+
+Activity 负责：
+
+- Inflate 并绑定 XML Layout。
+- 获取用户输入。
+- 观察 UiState 和 UiEvent。
+- 渲染 Loading、Content、Empty、Error 和 Submitting。
+- 调用 ViewModel 的公开方法。
+- 使用显式 Intent 执行页面跳转。
+- 读取、验证 Intent Extra。
+- 处理 Toolbar 返回和系统返回行为。
 
 Activity 不应：
 
-- 直接调用业务 API。
-- 保存具体页面表单数据。
-- 包含 Meal、Group 等业务逻辑。
-
-### 3.2 Fragment
-
-Fragment 负责：
-
-- Inflate/绑定 XML。
-- 接收用户输入。
-- 观察 UiState 和 UiEvent。
-- 渲染 Loading、Content、Empty、Error。
-- 调用 ViewModel 的公开方法。
-- 执行页面导航。
-
-Fragment 不应：
-
-- 直接创建 Retrofit。
-- 直接调用 Api。
-- 手动启动线程。
-- 实现复杂业务校验。
+- 直接创建或调用 Retrofit API。
+- 将复杂业务校验全部写在点击事件中。
 - 长期保存服务器数据。
+- 在 Adapter 中执行 API 调用。
+- 通过 Intent 传递完整 DTO、Repository 或 ViewModel。
+- 持有其他 Activity 的 View 或 Binding。
 
-### 3.3 ViewModel
+### 4.2 ViewModel
 
 ViewModel 负责：
 
-- 页面状态。
-- 输入验证。
+- 保存页面状态和表单状态。
+- 执行本地输入验证。
 - 调用 Repository。
-- 将网络结果转换为 UiState。
-- 发出一次性 UiEvent，如导航、Snackbar。
+- 将 NetworkResult 转换为 UiState。
+- 发出一次性 UiEvent，例如打开页面、显示 Snackbar、结束当前页面。
 
-建议模式：
+示例：
 
 ```kotlin
-data class HistoryUiState(
-    val isLoading: Boolean = false,
-    val isRefreshing: Boolean = false,
-    val meals: List<MealRecordDto> = emptyList(),
-    val drinks: List<DrinkRecordDto> = emptyList(),
-    val selectedTab: HistoryTab = HistoryTab.MEAL,
-    val error: UiText? = null
+data class RegisterUiState(
+    val username: String = "",
+    val email: String = "",
+    val password: String = "",
+    val confirmPassword: String = "",
+    val isSubmitting: Boolean = false,
+    val usernameError: String? = null,
+    val emailError: String? = null,
+    val passwordError: String? = null,
+    val confirmPasswordError: String? = null
 )
 ```
 
-### 3.4 Repository
+Activity 负责执行 Intent；ViewModel 只能发出语义事件，例如 `OpenProfileSetup`，不能持有 Activity Context。
+
+### 4.3 Repository
 
 Repository 负责：
 
 - 组合一个 Feature 所需的 API 调用。
-- 将 Retrofit 异常转换为 `NetworkResult`。
+- 将 Retrofit 响应和异常转换为统一的 `NetworkResult`。
 - 隐藏网络实现细节。
-- 必要时处理多接口顺序调用。
+- 必要时处理多个接口的顺序调用。
+- 在认证成功后调用 TokenManager 保存 Token。
 
-Repository 不应持有 Fragment、Activity 或 View。
+Repository 不应持有 Activity、View 或 View Binding。
 
-### 3.5 API interface
+### 4.4 Retrofit API interface
 
-Retrofit interface 只定义 HTTP 契约：
+API interface 只定义：
 
-- Method。
+- HTTP Method。
 - Path。
 - Query。
-- Body。
+- Request Body。
 - Response DTO。
 
-不放 UI 文案或导航逻辑。
+API interface 不放 UI 文案、Intent 或返回栈逻辑。
 
-### 3.6 DTO
+### 4.5 DTO
 
-DTO 与后端 JSON 一一对应。
+DTO 与后端 JSON 一一对应：
 
 - 请求对象以 `Request` 结尾。
 - API 返回对象以 `Dto` 或 `Response` 结尾。
 - ID 使用 `Long`。
-- 金额建议使用 `BigDecimal`；若课程范围有限，可使用 `Double`，但只在显示层格式化。
 - 可空字段必须声明为 nullable。
+- `confirmPassword` 等仅用于本地表单的字段不得放入后端 Request DTO。
 
-## 4. 项目根目录结构
-
-```text
-FoodMind/
-├── app/
-│   ├── build.gradle.kts
-│   ├── proguard-rules.pro
-│   └── src/
-│       ├── main/
-│       ├── test/
-│       │   └── java/com/foodmind/app/
-│       │       ├── core/network/NetworkErrorHandlerTest.kt
-│       │       └── feature/
-│       │           ├── auth/AuthViewModelTest.kt
-│       │           ├── records/HistoryViewModelTest.kt
-│       │           └── recommendation/RecommendationViewModelTest.kt
-│       └── androidTest/
-│           └── java/com/foodmind/app/
-│               ├── LoginFlowTest.kt
-│               └── RecordFlowTest.kt
-├── docs/
-│   ├── README.md
-│   ├── 01_Product_Requirements.md
-│   ├── 02_User_Flows_and_Screens.md
-│   ├── 03_Frontend_Architecture.md
-│   ├── 04_API_Contract.md
-│   └── 05_Development_and_Test_Plan.md
-├── gradle/wrapper/
-├── build.gradle.kts
-├── settings.gradle.kts
-├── gradle.properties
-├── gradlew
-├── gradlew.bat
-├── local.properties
-└── README.md
-```
-
-注意：
-
-- `local.properties` 不提交版本控制。
-- 密钥、Token、真实生产地址不得写入 Git。
-- 根目录 `README.md` 用于项目启动说明；`docs/README.md` 是产品与技术文档索引。
-
-## 5. `app/src/main` 完整文件结构
+## 5. 项目目录结构
 
 ```text
 app/src/main/
@@ -194,8 +209,10 @@ app/src/main/
 ├── java/com/foodmind/app/
 │   ├── FoodMindApplication.kt
 │   ├── MainActivity.kt
+│   ├── LaunchViewModel.kt
+│   ├── LaunchUiState.kt
 │   │
-│   ├── core/
+│   ├── common/
 │   │   ├── network/
 │   │   │   ├── ApiClient.kt
 │   │   │   ├── AuthInterceptor.kt
@@ -225,11 +242,13 @@ app/src/main/
 │   │   │   └── RecommendationSource.kt
 │   │   │
 │   │   ├── ui/
+│   │   │   ├── BaseActivity.kt
 │   │   │   ├── UiText.kt
 │   │   │   ├── UiEvent.kt
 │   │   │   └── BaseListAdapter.kt
 │   │   │
 │   │   └── util/
+│   │       ├── IntentKeys.kt
 │   │       ├── DateUtils.kt
 │   │       ├── FormatUtils.kt
 │   │       ├── ValidationUtils.kt
@@ -246,11 +265,12 @@ app/src/main/
 │   │   │   │       ├── AuthResponse.kt
 │   │   │   │       └── UserDto.kt
 │   │   │   └── ui/
-│   │   │       ├── LoginFragment.kt
-│   │   │       ├── RegisterFragment.kt
+│   │   │       ├── LoginActivity.kt
+│   │   │       ├── RegisterActivity.kt
 │   │   │       ├── AuthViewModel.kt
 │   │   │       ├── AuthUiState.kt
-│   │   │       └── AuthUiEvent.kt
+│   │   │       ├── AuthUiEvent.kt
+│   │   │       └── AuthViewModelFactory.kt
 │   │   │
 │   │   ├── profile/
 │   │   │   ├── data/
@@ -262,17 +282,16 @@ app/src/main/
 │   │   │   │       ├── CuisinePreferenceRequest.kt
 │   │   │   │       └── DietaryRestrictionRequest.kt
 │   │   │   └── ui/
-│   │   │       ├── ProfileSetupFragment.kt
-│   │   │       ├── ProfileFragment.kt
+│   │   │       ├── ProfileSetupActivity.kt
+│   │   │       ├── ProfileActivity.kt
 │   │   │       ├── ProfileViewModel.kt
 │   │   │       ├── ProfileUiState.kt
 │   │   │       └── ProfileUiEvent.kt
 │   │   │
-│   │   ├── home/
-│   │   │   └── ui/
-│   │   │       ├── HomeFragment.kt
-│   │   │       ├── HomeViewModel.kt
-│   │   │       └── HomeUiState.kt
+│   │   ├── home/ui/
+│   │   │   ├── HomeActivity.kt
+│   │   │   ├── HomeViewModel.kt
+│   │   │   └── HomeUiState.kt
 │   │   │
 │   │   ├── records/
 │   │   │   ├── meal/
@@ -284,12 +303,11 @@ app/src/main/
 │   │   │   │   │       ├── CreateMealRequest.kt
 │   │   │   │   │       └── UpdateMealRequest.kt
 │   │   │   │   └── ui/
-│   │   │   │       ├── AddMealFragment.kt
-│   │   │   │       ├── MealDetailFragment.kt
+│   │   │   │       ├── AddMealActivity.kt
+│   │   │   │       ├── MealDetailActivity.kt
 │   │   │   │       ├── MealAdapter.kt
 │   │   │   │       ├── MealFormState.kt
-│   │   │   │       ├── MealDetailViewModel.kt
-│   │   │   │       └── MealDetailUiState.kt
+│   │   │   │       └── MealDetailViewModel.kt
 │   │   │   │
 │   │   │   ├── drink/
 │   │   │   │   ├── data/
@@ -300,103 +318,66 @@ app/src/main/
 │   │   │   │   │       ├── CreateDrinkRequest.kt
 │   │   │   │   │       └── UpdateDrinkRequest.kt
 │   │   │   │   └── ui/
-│   │   │   │       ├── AddDrinkFragment.kt
-│   │   │   │       ├── DrinkDetailFragment.kt
+│   │   │   │       ├── AddDrinkActivity.kt
+│   │   │   │       ├── DrinkDetailActivity.kt
 │   │   │   │       ├── DrinkAdapter.kt
 │   │   │   │       ├── DrinkFormState.kt
-│   │   │   │       ├── DrinkDetailViewModel.kt
-│   │   │   │       └── DrinkDetailUiState.kt
+│   │   │   │       └── DrinkDetailViewModel.kt
 │   │   │   │
 │   │   │   └── ui/
-│   │   │       ├── LogFragment.kt
-│   │   │       ├── HistoryFragment.kt
+│   │   │       ├── LogActivity.kt
+│   │   │       ├── HistoryActivity.kt
 │   │   │       ├── LogViewModel.kt
-│   │   │       ├── LogUiState.kt
-│   │   │       ├── HistoryViewModel.kt
-│   │   │       └── HistoryUiState.kt
+│   │   │       └── HistoryViewModel.kt
 │   │   │
 │   │   ├── group/
 │   │   │   ├── data/
 │   │   │   │   ├── GroupApi.kt
 │   │   │   │   ├── GroupRepository.kt
 │   │   │   │   └── dto/
-│   │   │   │       ├── GroupDto.kt
-│   │   │   │       ├── GroupMemberDto.kt
-│   │   │   │       ├── GroupFeedItemDto.kt
-│   │   │   │       ├── CreateGroupRequest.kt
-│   │   │   │       ├── CreateGroupResponse.kt
-│   │   │   │       ├── JoinGroupRequest.kt
-│   │   │   │       └── JoinGroupResponse.kt
 │   │   │   └── ui/
-│   │   │       ├── GroupsFragment.kt
-│   │   │       ├── GroupDetailFragment.kt
-│   │   │       ├── GroupFeedFragment.kt
+│   │   │       ├── GroupsActivity.kt
+│   │   │       ├── GroupDetailActivity.kt
+│   │   │       ├── GroupFeedActivity.kt
 │   │   │       ├── GroupViewModel.kt
-│   │   │       ├── GroupUiState.kt
-│   │   │       ├── GroupUiEvent.kt
 │   │   │       └── adapter/
-│   │   │           ├── GroupAdapter.kt
-│   │   │           ├── GroupFeedAdapter.kt
-│   │   │           └── GroupMemberAdapter.kt
 │   │   │
 │   │   ├── recommendation/
 │   │   │   ├── data/
-│   │   │   │   ├── RecommendationApi.kt
-│   │   │   │   ├── RecommendationRepository.kt
-│   │   │   │   └── dto/
-│   │   │   │       ├── RecommendationRequest.kt
-│   │   │   │       ├── RecommendationResponse.kt
-│   │   │   │       ├── RecommendationItemDto.kt
-│   │   │   │       ├── RecommendationHistoryDto.kt
-│   │   │   │       ├── RejectRecommendationRequest.kt
-│   │   │   │       ├── MarkRecommendationEatenRequest.kt
-│   │   │   │       └── MarkRecommendationEatenResponse.kt
 │   │   │   └── ui/
-│   │   │       ├── RecommendationFragment.kt
+│   │   │       ├── RecommendationActivity.kt
 │   │   │       ├── RecommendationViewModel.kt
-│   │   │       ├── RecommendationUiState.kt
 │   │   │       └── RecommendationAdapter.kt
 │   │   │
 │   │   └── analytics/
 │   │       ├── data/
-│   │       │   ├── AnalyticsApi.kt
-│   │       │   ├── AnalyticsRepository.kt
-│   │       │   └── dto/
-│   │       │       ├── WeeklyAnalyticsDto.kt
-│   │       │       ├── MonthlyAnalyticsDto.kt
-│   │       │       ├── RepetitionAnalyticsDto.kt
-│   │       │       ├── SpendingAnalyticsDto.kt
-│   │       │       ├── TopItemDto.kt
-│   │       │       ├── RepeatedFoodDto.kt
-│   │       │       ├── RepeatedCuisineDto.kt
-│   │       │       └── DailySpendingDto.kt
 │   │       └── ui/
-│   │           ├── AnalyticsFragment.kt
-│   │           ├── AnalyticsViewModel.kt
-│   │           └── AnalyticsUiState.kt
+│   │           ├── AnalyticsActivity.kt
+│   │           └── AnalyticsViewModel.kt
 │   │
-│   └── navigation/
-│       └── NavigationExtensions.kt
+│   └── routing/
+│       ├── ActivityNavigator.kt
+│       └── MainSection.kt
 │
 └── res/
     ├── layout/
     │   ├── activity_main.xml
-    │   ├── fragment_login.xml
-    │   ├── fragment_register.xml
-    │   ├── fragment_profile_setup.xml
-    │   ├── fragment_profile.xml
-    │   ├── fragment_home.xml
-    │   ├── fragment_log.xml
-    │   ├── fragment_add_meal.xml
-    │   ├── fragment_add_drink.xml
-    │   ├── fragment_history.xml
-    │   ├── fragment_meal_detail.xml
-    │   ├── fragment_drink_detail.xml
-    │   ├── fragment_groups.xml
-    │   ├── fragment_group_detail.xml
-    │   ├── fragment_group_feed.xml
-    │   ├── fragment_recommendation.xml
-    │   ├── fragment_analytics.xml
+    │   ├── activity_login.xml
+    │   ├── activity_register.xml
+    │   ├── activity_profile_setup.xml
+    │   ├── activity_profile.xml
+    │   ├── activity_home.xml
+    │   ├── activity_log.xml
+    │   ├── activity_add_meal.xml
+    │   ├── activity_add_drink.xml
+    │   ├── activity_history.xml
+    │   ├── activity_meal_detail.xml
+    │   ├── activity_drink_detail.xml
+    │   ├── activity_groups.xml
+    │   ├── activity_group_detail.xml
+    │   ├── activity_group_feed.xml
+    │   ├── activity_recommendation.xml
+    │   ├── activity_analytics.xml
     │   ├── item_meal.xml
     │   ├── item_drink.xml
     │   ├── item_group.xml
@@ -407,19 +388,14 @@ app/src/main/
     │   ├── item_daily_spending.xml
     │   ├── dialog_create_group.xml
     │   ├── dialog_join_group.xml
-    │   ├── dialog_reject_recommendation.xml
     │   ├── view_loading.xml
     │   ├── view_empty_state.xml
     │   └── view_error_state.xml
-    │
-    ├── drawable/
-    ├── mipmap/
     ├── menu/
-    │   ├── menu_bottom_navigation.xml
+    │   ├── menu_main_sections.xml
     │   ├── menu_history_filter.xml
     │   └── menu_detail.xml
-    ├── navigation/
-    │   └── nav_graph.xml
+    ├── drawable/
     ├── values/
     │   ├── strings.xml
     │   ├── colors.xml
@@ -431,41 +407,193 @@ app/src/main/
         └── network_security_config.xml
 ```
 
-## 6. 为什么这样拆分
-
-### 6.1 Enum 分文件
-
-比把所有 Enum 放进 `Enums.kt` 更容易：
-
-- 搜索。
-- 单独扩展 UI Label。
-- 使用 Gson/Moshi 适配。
-- 避免一个文件不断膨胀。
-
-课程项目规模较小时，合并成 `Enums.kt` 也可接受，但必须保持 API 值不变。
-
-### 6.2 Add 与 Detail 分开
-
-- Add 页面是表单状态。
-- Detail 页面是服务器读取状态。
-- 编辑可以复用 Add 页面，通过可选 ID 切换模式。
-- 避免一个 Fragment 同时承担查看、创建、编辑三种复杂状态。
-
-### 6.3 Feature 内部再分 data/ui
-
-阅读一个功能时，开发者只需进入对应 Feature：
+项目中不应存在：
 
 ```text
-feature/group/
-├── data    后端通信和 DTO
-└── ui      页面、状态和 Adapter
+res/navigation/nav_graph.xml
+FragmentContainerView
+NavHostFragment
+NavController
+XxxFragment.kt
+fragment_xxx.xml
 ```
 
-不需要在全局 `api/`、`repository/`、`fragment/` 目录之间来回寻找。
+### 5.1 当前工程迁移清单
 
-## 7. 网络层设计
+从现有基础工程切换到本架构时，按以下顺序处理：
 
-### 7.1 通用响应
+1. 删除 `common/ui/BaseFragment.kt`，创建 `common/ui/BaseActivity.kt`。
+2. 删除 `res/navigation/nav_graph.xml`。
+3. 确认 `activity_main.xml` 不包含 FragmentContainerView 或 NavHost。
+4. 从 Gradle 中移除 Navigation Component 和 Safe Args 依赖；保留 Activity、Lifecycle、Retrofit、Coroutines 和 View Binding。
+5. 创建 LoginActivity、RegisterActivity 和 ProfileSetupActivity 及对应 `activity_*.xml`。
+6. 在 AndroidManifest.xml 注册新增 Activity。
+7. 使用显式 Intent 打通 `MainActivity → LoginActivity → RegisterActivity → ProfileSetupActivity`。
+8. 完成认证返回栈测试后，再开始 Home 和其他业务页面。
+
+迁移过程中不得一次创建所有空 Activity。每新增一个 Activity，都应同时完成布局、Manifest 注册、Intent 入口和最小返回行为。
+
+## 6. Intent 导航规范
+
+### 6.1 普通页面跳转
+
+```kotlin
+val intent = Intent(this, RegisterActivity::class.java)
+startActivity(intent)
+```
+
+返回上一页：
+
+```kotlin
+finish()
+```
+
+### 6.2 认证成功后清空返回栈
+
+Login、Register 或 Profile Setup 完成后：
+
+```kotlin
+val intent = Intent(this, ProfileSetupActivity::class.java).apply {
+    flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+        Intent.FLAG_ACTIVITY_CLEAR_TASK
+}
+startActivity(intent)
+```
+
+进入 Home 时使用相同规则，确保系统返回键不会回到认证页面。
+
+### 6.3 一级页面切换
+
+一级页面切换使用统一的 `ActivityNavigator`，不得在五个 Activity 中复制不同实现：
+
+```kotlin
+object ActivityNavigator {
+    fun openMainSection(
+        activity: Activity,
+        target: Class<out Activity>
+    ) {
+        if (activity::class.java == target) return
+
+        val intent = Intent(activity, target).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        activity.startActivity(intent)
+        activity.finish()
+    }
+}
+```
+
+这套规则优先保证：
+
+- 同一一级页面不会被连续重复创建。
+- 返回键不会穿过多个一级页面形成混乱路径。
+- 二级页面仍可正常返回来源页面。
+
+### 6.4 Intent Extra
+
+统一 Key：
+
+```kotlin
+object IntentKeys {
+    const val EXTRA_MEAL_ID = "extra_meal_id"
+    const val EXTRA_DRINK_ID = "extra_drink_id"
+    const val EXTRA_GROUP_ID = "extra_group_id"
+    const val EXTRA_FORM_MODE = "extra_form_mode"
+    const val EXTRA_SOURCE = "extra_source"
+    const val EXTRA_MEAL_TYPE = "extra_meal_type"
+}
+```
+
+发送：
+
+```kotlin
+val intent = Intent(this, MealDetailActivity::class.java).apply {
+    putExtra(IntentKeys.EXTRA_MEAL_ID, mealId)
+}
+startActivity(intent)
+```
+
+接收：
+
+```kotlin
+val mealId = intent.getLongExtra(IntentKeys.EXTRA_MEAL_ID, -1L)
+if (mealId <= 0L) {
+    showMessage(getString(R.string.error_invalid_meal))
+    finish()
+    return
+}
+```
+
+规则：
+
+- Intent 只传 ID、模式、来源等轻量值。
+- 不传完整 DTO、Bitmap、Repository 或 ViewModel。
+- 必填参数必须提供无效默认值并立即校验。
+- Key 不允许散落为字符串字面量。
+
+## 7. Activity View Binding 模式
+
+```kotlin
+class RegisterActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityRegisterBinding
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        binding = ActivityRegisterBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        setupViews()
+        observeViewModel()
+    }
+}
+```
+
+注意：
+
+- Activity Binding 在 `onCreate()` 初始化。
+- 不需要使用 Fragment 的 nullable `_binding` 模式。
+- Binding 不得存入单例、Repository 或 ViewModel。
+- Activity 销毁后不得由后台回调继续直接更新 View。
+
+## 8. ViewModel 与状态观察
+
+观察 StateFlow 时使用 Activity 生命周期：
+
+```kotlin
+lifecycleScope.launch {
+    repeatOnLifecycle(Lifecycle.State.STARTED) {
+        launch {
+            viewModel.uiState.collect(::render)
+        }
+        launch {
+            viewModel.events.collect(::handleEvent)
+        }
+    }
+}
+```
+
+UiState 用于可重复渲染：
+
+- 表单值。
+- Loading/Submitting。
+- Content/Empty/Error。
+- Field errors。
+
+UiEvent 用于只消费一次：
+
+- 打开目标 Activity。
+- 显示 Snackbar/Toast。
+- 结束当前 Activity。
+- 复制邀请码。
+
+不要把一次性 Intent 跳转直接存为长期 State，否则旋转屏幕后可能重复打开页面。
+
+## 9. 网络层设计
+
+### 9.1 通用响应
 
 ```kotlin
 data class ApiResponse<T>(
@@ -480,26 +608,22 @@ data class FieldError(
     val field: String,
     val message: String
 )
-
-data class PageResponse<T>(
-    val content: List<T>,
-    val page: Int,
-    val size: Int,
-    val totalElements: Long,
-    val totalPages: Int,
-    val last: Boolean
-)
 ```
 
-### 7.2 统一结果
+### 9.2 统一结果
 
 ```kotlin
 sealed interface NetworkResult<out T> {
-    data class Success<T>(val data: T, val message: String) : NetworkResult<T>
+    data class Success<T>(
+        val data: T,
+        val message: String
+    ) : NetworkResult<T>
+
     data class ValidationError(
         val message: String,
         val fields: Map<String, String>
     ) : NetworkResult<Nothing>
+
     data object Unauthorized : NetworkResult<Nothing>
     data class Forbidden(val message: String) : NetworkResult<Nothing>
     data class NotFound(val message: String) : NetworkResult<Nothing>
@@ -509,140 +633,52 @@ sealed interface NetworkResult<out T> {
 }
 ```
 
-Repository 应调用一个统一的 `safeApiCall`，避免每个 Repository 重复 try/catch。
+Repository 应调用统一的 `safeApiCall`，避免每个 Repository 重复解析错误。
 
-### 7.3 Base URL
+### 9.3 Base URL
 
 ```kotlin
-object ApiClient {
-    const val BASE_URL = "http://10.0.2.2:8080/"
-}
+buildConfigField(
+    "String",
+    "BASE_URL",
+    "\"http://10.0.2.2:8080/\""
+)
 ```
-
-说明：
 
 - Android Emulator → `10.0.2.2`
-- Genymotion → 通常为 `10.0.3.2`
 - 真机 → 电脑局域网 IP
-- `localhost` 在手机中不是开发电脑
+- 手机中的 `localhost` 不是开发电脑
+- Retrofit Base URL 必须以 `/` 结尾
 
-推荐把 URL 放在 `BuildConfig`，便于切换环境：
+## 10. Session 和统一 401
 
-```gradle
-buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/\"")
-```
-
-## 8. Session 和 401
-
-`AuthInterceptor` 只负责添加 Header：
+`AuthInterceptor` 只负责为受保护请求添加：
 
 ```text
 Authorization: Bearer <token>
 ```
 
-统一 401 流程：
+统一流程：
 
 ```text
-API returns 401
+Protected API returns 401
 → NetworkErrorHandler emits SessionExpired
 → SessionManager clears token
-→ MainActivity receives event
-→ navigate to Login and clear back stack
+→ current BaseActivity receives event
+→ explicit Intent opens LoginActivity
+→ NEW_TASK + CLEAR_TASK clears protected Activities
 ```
 
-注意：
+规则：
 
-- Interceptor 不直接操作 NavController。
-- 多个并发请求都返回 401 时，只导航一次。
+- Interceptor 不直接启动 Activity。
 - Login/Register 请求不添加空 Token。
+- Login 接口自身返回 401 时显示账号密码错误，不触发 Session expired。
+- 多个并发请求同时返回 401 时，只执行一次全局跳转。
 
-## 9. 状态与事件
+## 11. 表单验证
 
-### UiState
-
-用于可重复渲染的状态：
-
-- Loading。
-- 表单值。
-- 列表数据。
-- Empty。
-- Field errors。
-
-### UiEvent
-
-用于只消费一次的行为：
-
-- Navigate。
-- ShowSnackbar。
-- CloseDialog。
-- CopyInviteCode。
-
-不要把 Snackbar 文案长期保存在 State 中，否则旋转屏幕后可能重复显示。
-
-## 10. Fragment Binding 模式
-
-```kotlin
-private var _binding: FragmentHistoryBinding? = null
-private val binding get() = _binding!!
-
-override fun onCreateView(
-    inflater: LayoutInflater,
-    container: ViewGroup?,
-    savedInstanceState: Bundle?
-): View {
-    _binding = FragmentHistoryBinding.inflate(inflater, container, false)
-    return binding.root
-}
-
-override fun onDestroyView() {
-    super.onDestroyView()
-    _binding = null
-}
-```
-
-观察 Flow 时使用 `viewLifecycleOwner` 的生命周期，防止 View 销毁后继续更新 UI。
-
-## 11. Navigation Graph 设计
-
-建议一个 `nav_graph.xml` 足够，不需要自定义 `AppNavigator`。
-
-主要参数：
-
-| Destination | Argument |
-|---|---|
-| AddMealFragment | `mealId: Long = -1` |
-| AddDrinkFragment | `drinkId: Long = -1` |
-| MealDetailFragment | `mealId: Long` |
-| DrinkDetailFragment | `drinkId: Long` |
-| GroupDetailFragment | `groupId: Long` |
-| GroupFeedFragment | `groupId: Long` |
-| RecommendationFragment | `prefillMealType: String?` |
-
-推荐启用 Safe Args，避免手写 Bundle Key。
-
-## 12. RecyclerView 设计
-
-- 使用 `ListAdapter`。
-- 使用稳定唯一 ID 做 DiffUtil 比较。
-- Adapter 不持有 Fragment。
-- 点击通过 Lambda 传回：
-
-```kotlin
-MealAdapter(
-    onItemClick = viewModel::onMealClicked
-)
-```
-
-Group Feed 混合类型可使用：
-
-- 一个统一 `item_group_feed.xml`，根据类型显示标签；或
-- Meal/Drink 两种 ViewHolder。
-
-MVP 建议先用统一布局，降低复杂度。
-
-## 13. 表单验证
-
-分两层：
+验证分两层：
 
 ### Android 本地验证
 
@@ -650,6 +686,7 @@ MVP 建议先用统一布局，降低复杂度。
 - 格式。
 - 数值范围。
 - 字段间关系。
+- Confirm Password 一致性。
 
 ### 后端验证
 
@@ -659,75 +696,103 @@ MVP 建议先用统一布局，降低复杂度。
 - Invite Code 有效性。
 - Token 和业务冲突。
 
-后端返回 `details` 时，ViewModel 将字段错误映射回表单。
+后端返回 `details` 时，ViewModel 将字段错误映射到对应 TextInputLayout。
 
-## 14. 日期和金额
+提交期间：
 
-### 日期
+- 禁用提交按钮。
+- 必要时禁用输入框。
+- 显示 ProgressIndicator。
+- 忽略重复点击。
+- 请求失败后保留用户输入。
 
-- API 使用 ISO 8601。
-- 上传时间必须带 offset，例如 `2026-06-23T12:30:00+08:00`。
-- 后端推荐保存 UTC。
-- UI 按设备时区显示。
-- Android 建议使用 `java.time`。
+## 12. RecyclerView
 
-### 金额
+- 使用 `ListAdapter` 和 DiffUtil。
+- Adapter 不持有 Activity。
+- Adapter 不执行 Intent 或 API。
+- 点击事件通过 Lambda 传回 Activity：
 
-- UI 显示两位小数。
-- 不在 DTO getter 中拼接货币符号。
-- 货币符号和 locale 由 `FormatUtils` 处理。
-
-## 15. XML 资源规范
-
-- 所有用户可见文本放入 `strings.xml`。
-- 间距放入 `dimens.xml`。
-- 颜色放入 `colors.xml`，页面中不硬编码 Hex。
-- Enum 的 UI Label 放入 `strings.xml` 或 `arrays.xml`。
-- 布局 ID 使用语义命名，例如 `buttonSubmitMeal`，避免 `btn1`。
-- 可复用 Loading/Empty/Error 视图使用 `<include>`。
-
-## 16. Manifest 和开发网络
-
-```xml
-<uses-permission android:name="android.permission.INTERNET" />
+```kotlin
+MealAdapter(
+    onItemClick = { mealId ->
+        openMealDetail(mealId)
+    }
+)
 ```
 
-本地 HTTP 可配置：
+## 13. Manifest 规范
+
+每个 Activity 必须在 Manifest 注册：
 
 ```xml
 <application
     android:name=".FoodMindApplication"
     android:networkSecurityConfig="@xml/network_security_config"
-    ... />
+    ...>
+
+    <activity
+        android:name=".feature.auth.ui.RegisterActivity"
+        android:exported="false" />
+
+    <activity
+        android:name=".feature.auth.ui.LoginActivity"
+        android:exported="false" />
+
+    <activity
+        android:name=".MainActivity"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+    </activity>
+</application>
 ```
 
-`network_security_config.xml` 只对本地开发地址允许明文流量。正式环境不得全局开启 cleartext。
+规则：
 
-## 17. 依赖注入
+- 只有 Launcher Activity 默认 `exported=true`。
+- 内部页面默认 `exported=false`。
+- Manifest 声明 `android.permission.INTERNET`。
+- 本地 HTTP 只通过开发用 network security config 放行。
+- 正式环境不得全局允许明文流量。
 
-对课程项目有两种可接受方案：
+## 14. XML 资源规范
 
-### 简单方案
+- Activity 布局命名为 `activity_xxx.xml`。
+- 列表项命名为 `item_xxx.xml`。
+- Dialog 布局命名为 `dialog_xxx.xml`。
+- 所有用户可见文本放入 `strings.xml`。
+- 间距放入 `dimens.xml`。
+- 颜色放入 `colors.xml`。
+- ID 使用语义名称，例如 `buttonRegister`，不使用 `button1`。
+- 长表单使用 ScrollView/NestedScrollView，避免小屏无法提交。
 
-在 `FoodMindApplication` 中创建 Api 和 Repository，通过 ViewModelFactory 注入。
+## 15. 依赖创建
 
-优点：依赖少、容易讲解。  
-缺点：手写 Factory 较多。
+课程项目使用简单依赖创建方式：
 
-### Hilt 方案
+```text
+FoodMindApplication
+├── TokenManager
+├── Retrofit APIs
+└── Repositories
 
-使用 Hilt 注入 Retrofit、Repository 和 ViewModel。
+Activity
+└── ViewModelFactory
+    └── ViewModel
+```
 
-优点：规范、扩展方便。  
-缺点：课程时间有限时增加学习和配置成本。
+在 `FoodMindApplication` 中创建 API、Repository 和 TokenManager，再通过 ViewModelFactory 注入 ViewModel。
 
-建议：如果团队未学过 Hilt，使用简单方案，不要为架构分数冒进。
+本课程版本不要求 Hilt，避免增加与核心业务无关的配置成本。
 
-## 18. 命名规范
+## 16. 命名规范
 
 | 类型 | 示例 |
 |---|---|
-| Fragment | `HistoryFragment` |
+| Activity | `HistoryActivity` |
 | ViewModel | `HistoryViewModel` |
 | State | `HistoryUiState` |
 | Event | `HistoryUiEvent` |
@@ -735,44 +800,52 @@ MVP 建议先用统一布局，降低复杂度。
 | Repository | `MealRepository` |
 | Request | `CreateMealRequest` |
 | DTO | `MealRecordDto` |
-| Layout | `fragment_history.xml` |
+| Activity Layout | `activity_history.xml` |
 | List item | `item_meal.xml` |
-| Dialog | `dialog_create_group.xml` |
+| Intent Key | `EXTRA_MEAL_ID` |
 
-## 19. 不建议采用的实现
+## 17. Feature 到代码映射
 
-- 每个页面一个 Activity。
-- Fragment 直接调用 Retrofit。
-- 一个 `MainViewModel` 管理整个 App 所有功能。
-- 一个巨大的 `ApiService` 包含全部接口。
-- 将所有 DTO 放入单个 `Models.kt`。
-- 使用 `Map<String, Any>` 代替明确 DTO。
-- 在 Adapter 内执行导航或 API。
-- 在 XML 或 Kotlin 中硬编码 Token、用户 ID、Group ID。
-- 为每个小操作创建多层 UseCase；MVP 暂不需要 Domain 层。
-
-## 20. Feature 到代码映射
-
-| Feature | Fragment | ViewModel | Repository | API |
+| Feature | Activity | ViewModel | Repository | API |
 |---|---|---|---|---|
-| Login/Register | Login/Register | AuthViewModel | AuthRepository | AuthApi |
-| Profile | ProfileSetup/Profile | ProfileViewModel | ProfileRepository | ProfileApi |
-| Home | Home | HomeViewModel | 多 Repository 聚合 | Auth/Analytics/Meal/Drink |
-| Meal form | AddMeal | LogViewModel | MealRepository | MealApi |
-| Drink form | AddDrink | LogViewModel | DrinkRepository | DrinkApi |
-| History | History | HistoryViewModel | Meal/Drink Repository | Meal/Drink Api |
-| Record detail | Meal/Drink Detail | Detail ViewModel | 对应 Repository | 对应 Api |
-| Groups | Groups/Detail/Feed | GroupViewModel | GroupRepository | GroupApi |
-| Recommendation | Recommendation | RecommendationViewModel | RecommendationRepository | RecommendationApi |
-| Analytics | Analytics | AnalyticsViewModel | AnalyticsRepository | AnalyticsApi |
+| App launch | MainActivity | LaunchViewModel | AuthRepository | AuthApi |
+| Login/Register | Login/RegisterActivity | AuthViewModel | AuthRepository | AuthApi |
+| Profile | ProfileSetup/ProfileActivity | ProfileViewModel | ProfileRepository | ProfileApi |
+| Home | HomeActivity | HomeViewModel | 多 Repository 聚合 | Auth/Analytics/Meal/Drink |
+| Meal form | AddMealActivity | LogViewModel | MealRepository | MealApi |
+| Drink form | AddDrinkActivity | LogViewModel | DrinkRepository | DrinkApi |
+| History | HistoryActivity | HistoryViewModel | Meal/Drink Repository | Meal/Drink API |
+| Record detail | Meal/DrinkDetailActivity | Detail ViewModel | 对应 Repository | 对应 API |
+| Groups | Groups/Detail/FeedActivity | GroupViewModel | GroupRepository | GroupApi |
+| Recommendation | RecommendationActivity | RecommendationViewModel | RecommendationRepository | RecommendationApi |
+| Analytics | AnalyticsActivity | AnalyticsViewModel | AnalyticsRepository | AnalyticsApi |
 
-## 21. 架构完成标准
+## 18. 不建议采用的实现
 
-- 所有 Fragment 不直接引用 Retrofit Api。
-- 所有列表有 RecyclerView Adapter 和 DiffUtil。
+- Activity 直接调用 Retrofit。
+- 在 Activity 点击事件中堆积网络解析和业务规则。
+- 使用隐式 Intent 打开应用内部页面。
+- 通过 Intent 传递完整 DTO 或大型 Serializable 对象。
+- 每个页面自行定义不同的 Extra Key。
+- 登录成功后只调用 `finish()`，导致更早的认证页面仍留在返回栈。
+- 在 Adapter 内启动 Activity 或调用 API。
+- 一个巨大 ViewModel 管理整个 App。
+- 一个巨大 ApiService 包含所有领域接口。
+- 使用 `Map<String, Any>` 代替明确 DTO。
+- 在 XML 或 Kotlin 中硬编码 Token、用户 ID、Group ID。
+- 引入 Fragment、NavHost 或 Navigation Component 绕过课程约束。
+
+## 19. 架构完成标准
+
+- 所有页面由 Activity + XML Layout 实现。
+- 项目不存在 Fragment、NavHost、NavController 和导航图依赖。
+- 所有 Activity 已正确注册到 Manifest。
+- Activity 不直接引用 Retrofit API。
 - 所有远程页面由 UiState 驱动。
-- 所有受保护请求自动带 Token。
-- 401 统一处理。
-- Fragment Binding 在 `onDestroyView` 清理。
-- 导航只传 ID，不传大型 Serializable 对象。
-- 每个 Feature 可以独立找到 API、Repository、DTO 和 UI。
+- Intent 只传轻量参数，且目标页面验证必填 Extra。
+- 登录、注册、Profile Setup、Logout 和 401 的返回栈符合规格。
+- 所有受保护请求自动携带 Token。
+- Login/Register 不携带无效 Token。
+- RecyclerView Adapter 使用 DiffUtil，且不执行导航或 API。
+- View Binding 只在所属 Activity 内使用。
+- 每个 Feature 都能独立找到 Activity、ViewModel、Repository、API 和 DTO。
