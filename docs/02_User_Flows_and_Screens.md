@@ -137,8 +137,8 @@ Main application
 
 ### 成功导航
 
-- `profileCompleted=true` → 清空认证返回栈并打开 HomeActivity。
-- `profileCompleted=false` → 清空认证返回栈并打开 ProfileSetupActivity。
+- 登录成功后保存 Token，并使用 `FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_CLEAR_TASK` 清空认证返回栈，直接打开 HomeActivity。
+- 是否补全 Profile 不阻止用户进入 Home；如需补全资料，后续在 Profile 或 Home 中提供入口。
 
 ## 6. SCR-02 Register
 
@@ -214,16 +214,17 @@ Validate local form
 
 ### 页面目的
 
-提供用户当前状态摘要和最常用功能入口。
+提供用户问候、今日推荐预览和最常用功能入口。
 
 ### UI 模块
 
-- Toolbar：用户名或问候。
-- Weekly summary：Meal 数、Drink 数、Spending。
-- “What should I eat?”推荐入口。
-- Quick actions：Add Meal、Add Drink。
-- Recent records：最多 3～5 条。
-- Analytics 入口。
+- 全屏饮食插画背景。
+- 左上角问候：`Hello` + 当前用户名；用户名缺失时显示默认昵称。
+- 中部今日推荐轮播：展示多个推荐菜品卡片，支持横向滑动和轻量自动轮播。
+- 底部快捷入口：
+  - Favorites：打开收藏占位页。
+  - Add Food：打开添加食谱/食物占位页。
+  - User Profile：打开个人信息占位页。
 
 ### API
 
@@ -232,11 +233,13 @@ Validate local form
 - 可选：`GET /api/meals?size=3`
 - 可选：`GET /api/drinks?size=3`
 
+当前首页视觉 v1 暂不调用 Home API。用户名来自登录/注册成功后本地保存的会话信息；今日推荐先使用静态示例数据。后续接入真实推荐时，再引入 Recommendation Repository/ViewModel 并调用 `POST /api/recommendations/today`。
+
 ### 降级规则
 
-- Analytics 失败不影响 Quick Actions。
-- Recent records 失败不阻止推荐入口。
-- 每个模块可独立显示错误或空状态。
+- 用户名缺失不阻止进入首页，使用默认昵称。
+- 推荐接口尚未接入时展示静态示例推荐。
+- 底部占位页必须可返回首页。
 
 ## 9. SCR-05 Log
 

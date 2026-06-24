@@ -32,6 +32,18 @@
             android:exported="false" />
 
         <activity
+            android:name=".feature.favorites.ui.FavoritesActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".feature.addfood.ui.AddFoodActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".feature.userprofile.ui.UserProfileActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".feature.auth.ui.RegisterActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />

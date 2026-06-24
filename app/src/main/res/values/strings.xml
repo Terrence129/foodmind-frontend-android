@@ -17,5 +17,32 @@
     <string name="confirm_password">Confirm password</string>
     <string name="register">Register</string>
     <string name="back_to_login">Back to login</string>
+
+    <!-- Home -->
     <string name="home_title">Home</string>
+    <string name="home_background_content_description">Illustrated FoodMind home background</string>
+    <string name="home_greeting_hello">Hello</string>
+    <string name="home_greeting_format">Hello\n%1$s</string>
+    <string name="home_default_username">Foodie</string>
+    <string name="home_recommendation_title">Today\'s picks</string>
+    <string name="home_recommendation_first">Grilled Chicken\nSalad</string>
+    <string name="home_recommendation_second">Avocado Egg\nToast</string>
+    <string name="home_recommendation_third">Tomato Cheese\nBurger</string>
+    <string name="home_recommendation_fourth">Salmon Rice\nBowl</string>
+    <string name="home_recommendation_fifth">Berry Yogurt\nBowl</string>
+    <string name="home_favorites">Favorites</string>
+    <string name="home_add_food">Add Food</string>
+    <string name="home_user_profile">User Profile</string>
+
+    <!-- Placeholder pages -->
+    <string name="favorites_title">Favorites</string>
+    <string name="favorites_placeholder">Saved meals and recipes will appear here.</string>
+    <string name="add_food_title">Add Food</string>
+    <string name="add_food_placeholder">Choose what you want to add next.</string>
+    <string name="add_recipe">Add Recipe</string>
+    <string name="add_food_item">Add Food</string>
+    <string name="profile_title">User Profile</string>
+    <string name="profile_placeholder">Profile details and account settings will appear here.</string>
+    <string name="coming_soon">Coming soon</string>
+    <string name="back">Back</string>
 </resources>

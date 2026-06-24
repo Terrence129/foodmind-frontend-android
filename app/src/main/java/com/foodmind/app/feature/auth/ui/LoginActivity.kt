@@ -13,7 +13,6 @@ import androidx.lifecycle.ViewModelProvider
 import com.foodmind.app.FoodMindApplication
 import com.foodmind.app.databinding.ActivityLoginBinding
 import com.foodmind.app.feature.home.ui.HomeActivity
-import com.foodmind.app.feature.profile.ui.ProfileSetupActivity
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 
@@ -115,14 +114,8 @@ class LoginActivity : AppCompatActivity() {
 
     private fun handleEvent(event: AuthUiEvent) {
         when (event) {
-            is AuthUiEvent.LoginSuccess -> {
-                val destination = if (event.profileCompleted) {
-                    HomeActivity::class.java
-                } else {
-                    ProfileSetupActivity::class.java
-                }
-
-                openAuthenticatedPage(destination)
+            AuthUiEvent.LoginSuccess -> {
+                openAuthenticatedPage(HomeActivity::class.java)
             }
 
             is AuthUiEvent.ShowMessage -> {

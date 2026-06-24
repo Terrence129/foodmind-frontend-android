@@ -138,7 +138,7 @@ class RegisterActivity : AppCompatActivity() {
                 ).show()
             }
 
-            is AuthUiEvent.LoginSuccess -> Unit
+            AuthUiEvent.LoginSuccess -> Unit
         }
     }
 
