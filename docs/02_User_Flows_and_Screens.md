@@ -79,22 +79,21 @@ Main application
 
 ### 页面目的
 
-用户点击 App 后先看到简洁开屏，只展示 FoodMind 图标和欢迎文字，避免在正式登录或首页流程完成前承载额外表单。
+用户点击 App 后先看到全屏欢迎插画。开屏图片短暂展示后自动进入登录流程，避免在正式登录或首页流程完成前承载额外表单。
 
 ### UI 元素
 
-- FoodMind App 图标，进入页面时执行弹出动画。
-- 一行欢迎文字：`欢迎使用 FoodMind`。
+- 全屏欢迎插画，图片中包含 welcome 文案和 FoodMind 饮食主题视觉。
 
-### 用户操作
+### 自动行为
 
-| 操作 | 结果 |
+| 触发 | 结果 |
 |---|---|
-| 点击 App 图标 | 显示轻提示：`下一步即将接入` |
+| 欢迎图片展示约 900ms | 显式 Intent 打开 `LoginActivity`，并清空开屏返回栈 |
 
 ### 后续导航
 
-当前阶段不做真实跳转。后续接入真实 Auth / Home 流程时，应根据 Session 状态进入 Login、Profile Setup 或 Home。
+当前阶段仅接入开屏到登录页的真实跳转。后续接入完整启动会话恢复时，应根据 Session 状态进入 Login、Profile Setup 或 Home，并补齐 `/auth/me` 校验。
 
 ## 5. SCR-01 Login
 
