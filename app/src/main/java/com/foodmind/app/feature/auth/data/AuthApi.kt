@@ -1,6 +1,5 @@
 package com.foodmind.app.feature.auth.data
 
-import com.foodmind.app.common.network.ApiResponse
 import com.foodmind.app.feature.auth.data.dto.AuthResponse
 import com.foodmind.app.feature.auth.data.dto.LoginRequest
 import com.foodmind.app.feature.auth.data.dto.RegisterRequest
@@ -13,10 +12,10 @@ interface AuthApi {
     @POST("api/auth/login")
     suspend fun login(
         @Body request: LoginRequest
-    ): Response<ApiResponse<AuthResponse>>
+    ): Response<AuthResponse>
 
     @POST("api/auth/register")
     suspend fun register(
         @Body request: RegisterRequest
-    ): Response<ApiResponse<AuthResponse>>
+    ): Response<AuthResponse>
 }

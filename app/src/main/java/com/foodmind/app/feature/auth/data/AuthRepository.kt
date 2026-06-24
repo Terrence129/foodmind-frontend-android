@@ -1,7 +1,7 @@
 package com.foodmind.app.feature.auth.data
 
 import com.foodmind.app.common.network.NetworkResult
-import com.foodmind.app.common.network.safeApiCall
+import com.foodmind.app.common.network.safeDirectApiCall
 import com.foodmind.app.common.storage.TokenManager
 import com.foodmind.app.feature.auth.data.dto.AuthResponse
 import com.foodmind.app.feature.auth.data.dto.LoginRequest
@@ -16,7 +16,7 @@ class AuthRepository(
         email: String,
         password: String
     ): NetworkResult<AuthResponse> {
-        val result = safeApiCall {
+        val result = safeDirectApiCall {
             authApi.login(
                 LoginRequest(
                     email = email,
@@ -34,7 +34,7 @@ class AuthRepository(
         email: String,
         password: String
     ): NetworkResult<AuthResponse> {
-        val result = safeApiCall {
+        val result = safeDirectApiCall {
             authApi.register(
                 RegisterRequest(
                     username = username,

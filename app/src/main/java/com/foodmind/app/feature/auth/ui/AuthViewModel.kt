@@ -111,12 +111,23 @@ class AuthViewModel(
                 }
 
                 is NetworkResult.ValidationError -> {
+                    val message = result.message
+
                     _uiState.value = _uiState.value.copy(
                         isSubmitting = false,
-                        usernameError = result.fields["username"],
-                        emailError = result.fields["email"],
+                        usernameError = result.fields["username"]
+                            ?: message.asUsernameError(),
+                        emailError = result.fields["email"]
+                            ?: message.asEmailError(),
                         passwordError = result.fields["password"]
                     )
+
+                    if (result.fields.isEmpty() &&
+                        message.asUsernameError() == null &&
+                        message.asEmailError() == null
+                    ) {
+                        eventChannel.send(AuthUiEvent.ShowMessage(message))
+                    }
                 }
 
                 is NetworkResult.Conflict -> {
@@ -205,6 +216,12 @@ class AuthViewModel(
         _uiState.value =
             _uiState.value.copy(isSubmitting = value)
     }
+
+    private fun String.asEmailError(): String? =
+        takeIf { it.contains("email", ignoreCase = true) }
+
+    private fun String.asUsernameError(): String? =
+        takeIf { it.contains("username", ignoreCase = true) }
 
     private suspend fun showError(message: String) {
         setSubmitting(false)

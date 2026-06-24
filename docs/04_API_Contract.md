@@ -108,6 +108,8 @@ Login、Register、Health 不需要 Token。
 
 ### 4.2 失败
 
+推荐失败结构：
+
 ```json
 {
   "success": false,
@@ -121,6 +123,22 @@ Login、Register、Health 不需要 Token。
   ]
 }
 ```
+
+当前 Spring 后端全局异常处理实际返回：
+
+```json
+{
+  "timestamp": "2026-06-23T10:30:00+08:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Validation failed",
+  "errors": {
+    "email": "Email is required"
+  }
+}
+```
+
+Android 错误解析需要同时兼容 `details` 列表和 `errors` map。
 
 ### 4.3 删除
 
@@ -273,7 +291,7 @@ Request：
 | password | Required、至少 8 字符 |
 | username | Required、2～80 字符 |
 
-Response data：
+当前后端 Response body：
 
 ```json
 {
@@ -287,6 +305,8 @@ Response data：
   }
 }
 ```
+
+当前 Auth 后端直接返回上述 `AuthResponse`，不包裹在通用 `success/message/data` 结构中。
 
 Android：
 
@@ -307,7 +327,7 @@ Request：
 }
 ```
 
-Response data 与 Register 相同。
+当前后端 Response body 与 Register 相同。
 
 Android：
 
