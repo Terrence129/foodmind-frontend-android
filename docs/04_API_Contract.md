@@ -1,6 +1,6 @@
 # FoodMind 前后端 API 契约
 
-版本：1.1  
+版本：1.2  
 日期：2026-06-23  
 后端：Spring Boot 3 + PostgreSQL  
 客户端：Android
@@ -150,7 +150,7 @@ Login、Register、Health 不需要 Token。
 | 409 | Conflict | 显示后端 message |
 | 500 | Server error | 通用错误和 Retry |
 
-任意受保护接口返回 401 时，不在当前 Fragment 单独处理导航，而是走统一 SessionExpired 流程。
+任意受保护接口返回 401 时，不由各业务 Activity 重复处理页面跳转，而是走统一 SessionExpired 流程：清除 Token，使用显式 Intent 打开 LoginActivity，并通过 `FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_CLEAR_TASK` 清空所有受保护页面。
 
 ## 6. 枚举
 
