@@ -2,9 +2,7 @@ package com.foodmind.app.feature.auth.ui
 
 sealed interface AuthUiEvent {
 
-    data class LoginSuccess(
-        val profileCompleted: Boolean
-    ) : AuthUiEvent
+    data object LoginSuccess : AuthUiEvent
 
     data object RegisterSuccess : AuthUiEvent
 

@@ -64,11 +64,7 @@ class AuthViewModel(
             ) {
                 is NetworkResult.Success -> {
                     setSubmitting(false)
-                    eventChannel.send(
-                        AuthUiEvent.LoginSuccess(
-                            result.data.user.profileCompleted
-                        )
-                    )
+                    eventChannel.send(AuthUiEvent.LoginSuccess)
                 }
 
                 NetworkResult.Unauthorized -> {

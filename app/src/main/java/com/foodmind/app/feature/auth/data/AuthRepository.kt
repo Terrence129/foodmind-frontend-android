@@ -52,7 +52,10 @@ class AuthRepository(
         result: NetworkResult<AuthResponse>
     ) {
         if (result is NetworkResult.Success) {
-            tokenManager.saveToken(result.data.token)
+            tokenManager.saveSession(
+                token = result.data.token,
+                username = result.data.user.username
+            )
         }
     }
 }

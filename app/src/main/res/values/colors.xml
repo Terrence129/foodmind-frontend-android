@@ -4,4 +4,16 @@
     <color name="white">#FFFFFFFF</color>
     <color name="foodmind_background">#F7FAF5</color>
     <color name="foodmind_green_dark">#1F5D39</color>
+    <color name="home_ink">#4A1208</color>
+    <color name="home_ink_soft">#6E2615</color>
+    <color name="home_greeting_scrim">#99FFF8E4</color>
+    <color name="home_recommendation_panel">#D9FFF7E8</color>
+    <color name="home_panel_stroke">#99FFFFFF</color>
+    <color name="home_dish_card">#F4DDD1</color>
+    <color name="home_nav_button">#FFFFF3</color>
+    <color name="home_nav_button_pressed">#F7EBD3</color>
+    <color name="home_add_button">#A53212</color>
+    <color name="home_add_button_pressed">#8D250B</color>
+    <color name="placeholder_surface">#FFFFF7</color>
+    <color name="placeholder_card">#FFFFFF</color>
 </resources>
