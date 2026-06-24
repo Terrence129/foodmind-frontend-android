@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/foodmind_background"
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp"
+    tools:context=".feature.welcome.ui.WelcomeFragment">
+
+    <FrameLayout
+        android:id="@+id/appIconContainer"
+        android:layout_width="112dp"
+        android:layout_height="112dp"
+        android:background="@drawable/bg_welcome_icon_glow"
+        android:clickable="true"
+        android:elevation="10dp"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackgroundBorderless"
+        android:padding="20dp"
+        app:layout_constraintBottom_toTopOf="@id/welcomeMessageText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed">
+
+        <ImageView
+            android:id="@+id/appIcon"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/app_name"
+            android:src="@mipmap/ic_launcher_round" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/welcomeMessageText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:gravity="center"
+        android:text="@string/welcome_message"
+        android:textColor="@color/foodmind_green_dark"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/appIconContainer"
+        tools:text="欢迎使用 FoodMind" />
+</androidx.constraintlayout.widget.ConstraintLayout>

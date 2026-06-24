@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">FoodMind</string>
+    <string name="welcome_message">欢迎使用 FoodMind</string>
+    <string name="welcome_continue_pending">下一步即将接入</string>
 </resources>
