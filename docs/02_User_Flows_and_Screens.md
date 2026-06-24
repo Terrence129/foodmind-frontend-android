@@ -7,12 +7,13 @@
 
 ```text
 App Launch
-├── No token ───────────────→ Login
-│                              └── Register → Profile Setup → Home
-└── Has token → /auth/me
-               ├── 401 ─────→ Login
-               ├── profile incomplete → Profile Setup
-               └── profile complete ──→ Home
+└── Welcome / Simple Splash
+    ├── No token ───────────────→ Login
+    │                              └── Register → Profile Setup → Home
+    └── Has token → /auth/me
+                   ├── 401 ─────→ Login
+                   ├── profile incomplete → Profile Setup
+                   └── profile complete ──→ Home
 
 Main application
 ├── Home
@@ -29,7 +30,7 @@ Main application
 
 | ID | 页面 | Activity | 级别 |
 |---|---|---|---|
-| SCR-00 | App Launch Router | `MainActivity` | Router |
+| SCR-00 | Welcome / Simple Splash | `MainActivity` | Router/Launch |
 | SCR-01 | Login | `LoginActivity` | Auth |
 | SCR-02 | Register | `RegisterActivity` | Auth |
 | SCR-03 | Profile Setup | `ProfileSetupActivity` | Auth/Onboarding |
@@ -74,7 +75,27 @@ Main application
 
 必填 ID 缺失或小于等于 0 时，页面显示简短错误并安全 `finish()`，不得继续请求无效资源。
 
-## 4. SCR-01 Login
+## 4. SCR-00 Welcome / Simple Splash
+
+### 页面目的
+
+用户点击 App 后先看到全屏欢迎插画。开屏图片短暂展示后自动进入登录流程，避免在正式登录或首页流程完成前承载额外表单。
+
+### UI 元素
+
+- 全屏欢迎插画，图片中包含 welcome 文案和 FoodMind 饮食主题视觉。
+
+### 自动行为
+
+| 触发 | 结果 |
+|---|---|
+| 欢迎图片展示约 900ms | 显式 Intent 打开 `LoginActivity`，并清空开屏返回栈 |
+
+### 后续导航
+
+当前阶段仅接入开屏到登录页的真实跳转。后续接入完整启动会话恢复时，应根据 Session 状态进入 Login、Profile Setup 或 Home，并补齐 `/auth/me` 校验。
+
+## 5. SCR-01 Login
 
 ### 页面目的
 
@@ -119,7 +140,7 @@ Main application
 - `profileCompleted=true` → 清空认证返回栈并打开 HomeActivity。
 - `profileCompleted=false` → 清空认证返回栈并打开 ProfileSetupActivity。
 
-## 5. SCR-02 Register
+## 6. SCR-02 Register
 
 ### UI 元素
 
@@ -145,7 +166,7 @@ Main application
 
 保存 Token，使用 `FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_CLEAR_TASK` 清除 Register/Login 返回栈，并进入 ProfileSetupActivity。
 
-## 6. SCR-03 Profile Setup
+## 7. SCR-03 Profile Setup
 
 ### 页面目的
 
@@ -189,7 +210,7 @@ Validate local form
 - Spicy tolerance 为 0～5。
 - 同一 Cuisine 不得同时被 Like 和 Dislike。
 
-## 7. SCR-04 Home
+## 8. SCR-04 Home
 
 ### 页面目的
 
@@ -217,7 +238,7 @@ Validate local form
 - Recent records 失败不阻止推荐入口。
 - 每个模块可独立显示错误或空状态。
 
-## 8. SCR-05 Log
+## 9. SCR-05 Log
 
 ### 页面目的
 
@@ -234,7 +255,7 @@ Validate local form
 - Add Meal → SCR-06。
 - Add Drink → SCR-07。
 
-## 9. SCR-06 Add Meal
+## 10. SCR-06 Add Meal
 
 ### UI 字段
 
@@ -271,7 +292,7 @@ Validate local form
 
 表单有修改时按返回键，显示“Discard changes?”确认对话框。
 
-## 10. SCR-07 Add Drink
+## 11. SCR-07 Add Drink
 
 行为与 Add Meal 相同，字段替换为：
 
@@ -287,7 +308,7 @@ API：
 - `POST /api/drinks`
 - 编辑模式使用 `GET/PUT /api/drinks/{id}`
 
-## 11. SCR-08 History
+## 12. SCR-08 History
 
 ### 页面目的
 
@@ -323,7 +344,7 @@ API：
 - Drink：`No drinks logged yet.`
 - 提供 Add 按钮。
 
-## 12. SCR-09 Meal Detail
+## 13. SCR-09 Meal Detail
 
 ### 页面目的
 
@@ -350,11 +371,11 @@ API：
 - 403：显示权限错误并返回。
 - 404：显示记录不存在并允许返回。
 
-## 13. SCR-10 Drink Detail
+## 14. SCR-10 Drink Detail
 
 与 Meal Detail 相同，使用 Drink API 和 `drinkId`。
 
-## 14. SCR-11 Groups
+## 15. SCR-11 Groups
 
 ### 页面目的
 
@@ -386,7 +407,7 @@ API：
 - 刷新列表。
 - 可直接进入 Group Detail。
 
-## 15. SCR-12 Group Detail
+## 16. SCR-12 Group Detail
 
 ### Intent 参数
 
@@ -415,7 +436,7 @@ API：
 | ADMIN | 是 | 是 | 是，具体范围需后端确认 |
 | MEMBER | 是 | 产品决定，建议是 | 否 |
 
-## 16. SCR-13 Group Feed
+## 17. SCR-13 Group Feed
 
 ### UI 元素
 
@@ -437,7 +458,7 @@ API：
 
 `No group records yet. Share a meal or drink with this group.`
 
-## 17. SCR-14 Recommendation
+## 18. SCR-14 Recommendation
 
 ### 页面阶段
 
@@ -486,7 +507,7 @@ Selected
 
 具体互斥规则以 API 文档“需后端确认”项为准。
 
-## 18. SCR-15 Analytics
+## 19. SCR-15 Analytics
 
 ### UI
 
@@ -509,7 +530,7 @@ Selected
 - 文本无数据：`Not enough data`。
 - 不允许直接显示 `null`。
 
-## 19. SCR-16 Profile
+## 20. SCR-16 Profile
 
 ### UI
 
@@ -533,7 +554,7 @@ Selected
 - 清除 Token、本地 User 和页面状态。
 - 使用 Intent 打开 LoginActivity，并通过 `FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_CLEAR_TASK` 清空返回栈。
 
-## 20. 通用错误文案
+## 21. 通用错误文案
 
 | 场景 | 建议文案 |
 |---|---|
@@ -545,7 +566,7 @@ Selected
 | 409 | 使用后端 message，例如邮箱或群组冲突 |
 | 500 | `Something went wrong on the server. Please try again later.` |
 
-## 21. 页面完成检查
+## 22. 页面完成检查
 
 每个 Activity 完成前检查：
 
